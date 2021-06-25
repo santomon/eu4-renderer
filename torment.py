@@ -13,14 +13,61 @@ import config
 
 class HistoryMaker:
 
-    def __init__(self):
+    def __init__(self,
+                 _input,
+                 output,
+                 tmp_dir,
+                 mod_dir,
+                 eu4,
+                 definition,
+                 pbmp,
+                 crop,
+                 redefine=False,
+                 resize=None,
+                 f1=None,
+                 ):
+        if os.path.isfile(os.path.abspath(definition)):
+            self.d_path = os.path.abspath(definition)
+        else:
+            self.d_path = os.path.abspath(os.path.join(mod_dir, config.default_definition))
+
+        if os.path.isfile(os.path.abspath(pbmp)):
+            self.p_path = os.path.abspath(pbmp)
+        else:
+            self.p_path = os.path.abspath(os.path.join(mod_dir, config.default_provincesbmp))
+
+        self.eu4 = os.path.abspath(eu4)
+
         self.definitions = None
         self.province_map = None
+
+        self._load_definitions(self.d_path, **config.load_csv_kwargs)
+        self._load_province_map(self.p_path, crop=crop, resize=resize)
+
+        if redefine:
+            self.d_path = os.path.abspath(os.path.join(tmp_dir, "redefinition.csv"))
+            self.redefine(self.d_path)
+
         self.histories = None
         self.frames = None
         self.mp4 = None
         self.frame = None
-        self.size = None
+
+        self.crop = crop
+        self.size = (self.province_map.shape[1], self.province_map.shape[0])
+        print(self.size)
+
+        self.pairs = None
+        self.frame_kwargs = None
+        self.frame_args = None
+
+        self.input = os.path.abspath(_input)
+        self.output = os.path.abspath(output)
+        self.tmp_dir = os.path.abspath(tmp_dir)
+
+        if not os.path.isdir(self.tmp_dir):
+            os.makedirs(self.tmp_dir)
+        self.f1_name = f1
 
     def load_mp4(self):
         pass
@@ -28,9 +75,27 @@ class HistoryMaker:
     def mp4_to_frames(self):
         pass
 
-    def load_frames(self, frame_folder, first_frame_name, *args, **kwargs):
+    def match(self):
+        self.load_frames(self.input, self.f1_name)
+        self._create_histories()
+        self._export_histories(os.path.join(self.tmp_dir, config.histories_name))
 
-        files = os.listdir(frame_folder)
+    def make_history(self, eu4: str = None, output: str = None):
+
+        if eu4 is None:
+            eu4 = self.eu4
+        if output is None:
+            output = self.output
+
+        if self.histories is None:
+            self._load_histories(os.path.join(self.tmp_dir, config.histories_name))
+        self._apply_histories(eu4, output)
+
+    def load_frames(self, _input, first_frame_name, *args, **kwargs):
+
+        if not os.path.isdir(_input):
+            raise NotImplementedError("currently only directories of frames supported!")
+        files = os.listdir(_input)
         current_frame = first_frame_name
         self.frames = []
         self.frame_args = args
@@ -38,7 +103,7 @@ class HistoryMaker:
 
         while True:
             if current_frame in files:
-                full_frame_name = os.path.join(frame_folder, current_frame)
+                full_frame_name = os.path.join(_input, current_frame)
                 self.frames.append(full_frame_name)
                 next_frame = _next_frame(current_frame)
                 if next_frame == -1:
@@ -94,19 +159,18 @@ class HistoryMaker:
         else:
             self.histories.append(self.pairs)
 
-    def create_histories(self):
+    def _create_histories(self):
         for full_frame_name in tqdm(self.frames):
             self.match_frame_to_map(self.load_frame(full_frame_name, *self.frame_args, **self.frame_kwargs))
         self.histories = pd.DataFrame(self.histories)
 
-    def export_histories(self, output_file):
-        self.histories.to_csv(output_file, **config.export_definitions_kwargs)
+    def _export_histories(self, output_file):
+        self.histories.to_csv(output_file, **config.export_csv_kwargs)
 
-    def load_histories(self, histories_file):
-        self.histories = pd.read_csv(histories_file, **config.load_definitions_kwargs)
+    def _load_histories(self, histories_file):
+        self.histories = pd.read_csv(histories_file, **config.load_csv_kwargs)
 
-
-    def apply_histories(self, eusave: str, output_file: str, tmp_dir=config.tmp_dir):
+    def _apply_histories(self, eusave: str, output_file: str, tmp_dir=config.tmp_dir):
         """
         loads a save file, that is at the start of the game;
         appends province histories of self.histories to all provinces
@@ -123,13 +187,14 @@ class HistoryMaker:
             raise Exception("output_file should end with '.eu4'")
 
         eu = zipfile.ZipFile(eusave)
-        eu.extractall(tmp_dir)
+        eu_save_dir = os.path.join(tmp_dir, config.eu_extract)
+        eu.extractall(eu_save_dir)
         eu.close()
 
-        metaf = open(os.path.join(tmp_dir, "meta"), "r", encoding=config.encoding)
+        metaf = open(os.path.join(eu_save_dir, "meta"), "r", encoding=config.encoding)
         metat = metaf.read()
         metaf.close()
-        gamestatef = open(os.path.join(tmp_dir, "gamestate"), "r", encoding=config.encoding)
+        gamestatef = open(os.path.join(eu_save_dir, "gamestate"), "r", encoding=config.encoding)
         gamestatet = gamestatef.read()
         gamestatef.close()
 
@@ -146,25 +211,32 @@ class HistoryMaker:
         for p in tqdm(provinces):
             history = self._generate_single_history(self.histories[p], start_date)
             gamestatet = self._insert_history(p, history, gamestatet)
-        metat = re.sub(r"(?<=date=)\d+\.\d+\.\d+",end_date, metat)
+        metat = re.sub(r"(?<=date=)\d+\.\d+\.\d+", end_date, metat)
 
         self.metat = metat
         self.gamestatet = gamestatet
-        with open(os.path.join(tmp_dir, "meta"), "w", config.encoding) as metaf:
+        with open(os.path.join(eu_save_dir, "meta"), "w", encoding=config.encoding) as metaf:
             metaf.write(metat)
-        with open(os.path.join(tmp_dir, "gamestate"), "w", encoding=config.encoding) as gamestatef:
+        with open(os.path.join(eu_save_dir, "gamestate"), "w", encoding=config.encoding) as gamestatef:
             gamestatef.write(gamestatet)
-        shutil.make_archive(output_file, "zip", tmp_dir)
+        shutil.make_archive(output_file, "zip", eu_save_dir)
+
+        if os.path.isfile(output_file):
+            os.remove(output_file)
         os.rename(output_file + ".zip", output_file)
 
-    def load_definitions(self, fname, *args, **kwargs):
+    def _load_definitions(self, fname, *args, **kwargs):
 
         self.definitions = pd.read_csv(fname, *args, **kwargs)
         self.definitions["pcolour"] = self.definitions[["red", "green", "blue"]].apply(lambda x: str((x["red"], x["green"], x["blue"])), axis=1)
         self.definitions = self.definitions[["province", "pcolour"]]
 
-    def load_province_map(self, fname, resize=None):
+    def _load_province_map(self, fname, crop, resize=None):
         im = Image.open(fname)
+
+        if crop is not None:
+            im = im.crop(crop)
+
         if resize is not None:
             im = im.resize(resize, Image.NEAREST)
             self.size = resize
@@ -172,8 +244,6 @@ class HistoryMaker:
 
     def redefine(self, output_file, reload_def=True):
         assert self.definitions is not None and self.province_map is not None
-        # province_in_crop = pd.DataFrame(self.definitions["province"])
-        # province_in_crop["n"] = [0 for _ in range(len(province_in_crop))]
 
         existing_provinces = set()
 
@@ -188,9 +258,9 @@ class HistoryMaker:
         self.existing_provinces = existing_provinces
         new_def: pd.DataFrame = self.definitions[self.definitions["province"].isin(existing_provinces)]
         if output_file is not None:
-            new_def.to_csv(output_file, **config.export_definitions_kwargs)
+            new_def.to_csv(output_file, **config.export_csv_kwargs)
         if reload_def:
-            self.load_definitions(output_file, **config.load_definitions_kwargs)
+            self._load_definitions(output_file, **config.load_csv_kwargs)
 
     def _generate_single_history(self, ownership_history, start_date) -> str:
 
@@ -205,7 +275,14 @@ class HistoryMaker:
         query = r"(?<=-{}=){{".format(p)
         start_pos = re.search(query, gamestate).span()[0]
         end_pos = start_pos + _find_closing_bracket(gamestate[start_pos:])
-        return gamestate[:end_pos] + history + gamestate[end_pos:]
+
+        new_string = gamestate[start_pos:end_pos]
+        query = r"(?<=history=){"
+        start_inner = re.search(query, new_string).span()[0]
+        end_inner = start_inner + _find_closing_bracket(new_string[start_inner:])
+        new_string = new_string[:end_inner] + history + new_string[end_inner:]
+
+        return gamestate[:start_pos] + new_string + gamestate[end_pos:]
 
 def _next_frame(current_frame):
     cfname, ext = os.path.splitext(current_frame)
@@ -237,7 +314,7 @@ def _get_hre_members(province_history_path, output_file):
                 current_file = next_file
                 continue
             else:
-                pd.DataFrame(hre_provinces).to_csv(output_file, **config.export_definitions_kwargs)
+                pd.DataFrame(hre_provinces).to_csv(output_file, **config.export_csv_kwargs)
                 print("finished")
                 break
 
@@ -261,8 +338,6 @@ def _increment_date(date:str):
         m = str(int(m) + 1)
     return ".".join([y, m, d])
 
-def _find_span_in_game_state():
-    pass
 
 def _find_closing_bracket(text, bracket="{"):
     """
@@ -284,13 +359,6 @@ def _find_closing_bracket(text, bracket="{"):
             return i
     raise Exception("Could not find a matching closing bracket!")
 
-x = None
-def main():
-    global x
-    x = HistoryMaker()
-    x.load_definitions(config.definitions_path, **config.load_definitions_kwargs)
-    x.load_province_map(config.test_province_map_path, resize=(75, 100))
-    x.redefine(output_file=r"C:\Grand Archives\shitty projects\eu4-renderer\resources\xd.csv")
 
 def hre():
     _get_hre_members(config.province_history_path, r"C:\Grand Archives\shitty projects\eu4-renderer\resources\voltaires_nightmare_hremembers.csv")
@@ -299,25 +367,17 @@ def matcher():
     global x
     x = HistoryMaker()
     x.load_frames(r"C:\Grand Archives\shitty projects\eu4-renderer\resources\bad_apple_frames", "frame1.jpg")
-    x.load_definitions(config.definitions_path, **config.load_definitions_kwargs)
-    x.load_province_map(config.test_province_map_path, resize=(45, 60))
-    x.create_histories()
-    x.export_histories(r"C:\Grand Archives\shitty projects\eu4-renderer\resources\ba_histories.csv")
+    x._load_definitions(config.definitions_path, **config.load_csv_kwargs)
+    x._load_province_map(config.test_province_map_path, resize=(75, 100))
+    x._create_histories()
+    x._export_histories(r"C:\Grand Archives\shitty projects\eu4-renderer\resources\ba_histories.csv")
 
-def load_history():
-    global x
-    x = HistoryMaker()
-    x.load_histories(r"C:\Grand Archives\shitty projects\eu4-renderer\resources\ba_histories.csv")
 
-def apply_history():
-    global x
-    x = HistoryMaker()
-    x.load_histories(r"C:\Grand Archives\shitty projects\eu4-renderer\resources\ba_histories.csv")
-    x.apply_histories(config.test_eu4_save, r"C:\Grand Archives\shitty projects\eu4-renderer\resources\bad_apple.eu4")
+
 
 if __name__ == "__main__":
-    apply_history()
-
+    # matcher()
+    pass
 
 # t = np.unique(x.province_map.reshape(-1, x.province_map.shape[2]), axis=0)
 #voltaires nightmare: total unique colors: 7294

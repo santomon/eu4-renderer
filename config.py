@@ -1,13 +1,18 @@
-import numpy as np
-encoding = "ISO-8859-1"
+import os
 
-load_definitions_kwargs = {
-    "encoding": "ISO-8859-1",
+encoding = "ISO-8859-1"
+default_definition = os.path.abspath("map/definition.csv")
+default_provincesbmp = os.path.abspath("map/provinces.bmp")
+
+histories_name = "histories.csv"
+
+load_csv_kwargs = {
+    "encoding": encoding,
     "sep": ";",
     "dtype": {"province": int}
 }
-export_definitions_kwargs = {
-    "encoding": "ISO-8859-1",
+export_csv_kwargs = {
+    "encoding": encoding,
     "sep": ";",
     "index": False
 }
@@ -16,7 +21,7 @@ bw_match = {"(0, 0, 0)": "BTA",
             "(255, 255, 255)": "HAB",
             }
 
-brackets = {"{":"}", "[":"]", "(":")"}
+brackets = {"{": "}", "[": "]", "(": ")"}
 
 history_insert = "\t{date}={{\n\t\t\t\towner={tag}\n\t\t\t}}\n\t\t"
 
@@ -29,4 +34,5 @@ test_frame_first = r"frame40.jpg"
 
 test_eu4_save = r"C:\Grand Archives\shitty projects\eu4-renderer\resources\BadApple_Start_VoltairesNightmare.eu4"
 
-tmp_dir = r"C:\Grand Archives\shitty projects\eu4-renderer\resources\tmp"
+tmp_dir = "./resources/tmp"
+eu_extract = "save"

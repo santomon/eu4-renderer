@@ -20,6 +20,6 @@ class TestTorment:
         assert len(self.hm.frames) == len(os.listdir(self.test_frame_folder))  # as long as no other files are there...
 
     def test_load_definitions(self):
-        self.hm.load_definitions(self.test_definition_file, **config.load_definitions_kwargs)
+        self.hm._load_definitions(self.test_definition_file, **config.load_csv_kwargs)
 
 
