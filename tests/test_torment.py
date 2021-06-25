@@ -2,6 +2,8 @@ import os
 
 import torment
 import config
+import util
+import hre
 
 class TestTorment:
 
@@ -23,3 +25,28 @@ class TestTorment:
         self.hm._load_definitions(self.test_definition_file, **config.load_csv_kwargs)
 
 
+class TestUtil:
+
+    def setup(self):
+        self.iterable = [3, 4, 7, 10, 1]
+        self.colour = (21, 76, 101)
+        self.available_colours = config._simple_coloursteps
+
+    def test_closest_neighbour(self):
+        assert util._closest_neighbour(-2, self.iterable) == 1
+        assert util._closest_neighbour(24, self.iterable) == 10
+        assert util._closest_neighbour(6, self.iterable) == 7
+        assert util._closest_neighbour(8, self.iterable) == 7
+
+    def test_upper_neighbour(self):
+        assert util._upper_neighbour(15,  self.iterable) == 10
+        assert util._upper_neighbour(6, self.iterable) == 7
+        assert util._upper_neighbour(-1, self.iterable) == 1
+
+    def test_lower_neighbour(self):
+        assert util._lower_neighbour(-1, self.iterable) == 1
+        assert util._lower_neighbour(100, self.iterable) == 10
+        assert util._lower_neighbour(6, self.iterable) == 4
+
+    def test_interpolate_colour(self):
+        assert util.interpolate_colour(self.colour, self.available_colours) == (0, 51, 102)

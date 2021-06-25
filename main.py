@@ -53,7 +53,8 @@ def main():
     global args
     args = parse_args()
 
-    hm = torment.HistoryMaker(
+    hm = torment.HistoryMaker()
+    hm.fake_construct(
         _input=" ".join(args.input),
         output=" ".join(args.output),
         f1=" ".join(args.f1) if args.f1 is not None else None,

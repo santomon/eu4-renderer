@@ -1,4 +1,5 @@
 import os
+import itertools
 
 encoding = "ISO-8859-1"
 default_definition = os.path.abspath("map/definition.csv")
@@ -17,9 +18,13 @@ export_csv_kwargs = {
     "index": False
 }
 
+bw_values = (0, 255)
 bw_match = {"(0, 0, 0)": "BTA",
             "(255, 255, 255)": "HAB",
             }
+
+_simple_coloursteps = range(0, 256, 51)
+simple_colours = list(itertools.permutations(_simple_coloursteps, 3))
 
 brackets = {"{": "}", "[": "]", "(": ")"}
 
