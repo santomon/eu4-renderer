@@ -1,8 +1,16 @@
 # Rendering Videos on the EU4 Time Line
 
+![image](bad_apple.PNG)
+
 This repository contains code to create an eu4-savefile that plays back a video in question. Currently only supports Black-And-White Videos.
 
-Make sure, requirements.txt is satisfied. The code executed with the command line:
+**Currently only supports a folder of frames. If you have a video, you need to convert it to frames first, e.g.using ffmpeg.**
+
+**Currently only supports Black-White Videos!** (Oof)
+
+Make sure, requirements.txt is satisfied. 
+
+The code executed with the command line:
 
 `python main.py -i <frame_dir> -f1 <first_frame> -o <output_file> -eu4 <base_save_file> --mod_dir <eu4_game_file_dir> -d <definition> -p <province_map> --crop <crop_values> --resize <resize_shape>`
 
@@ -11,7 +19,6 @@ Use the following command to get additional info on the arguments and a list of 
 `python main.py -h`
 
 ----
-Currently only supports a folder of frames. If you have a video, you need to convert it to frames first, e.g.using ffmpeg.
 
 **frame_dir**: Path to your folder of frames
 
