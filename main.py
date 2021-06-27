@@ -42,7 +42,14 @@ def parse_args():
     parser.add_argument("--redefine", "-rd", action="store_true", default=False,
                         help="redefinition recreates the definition based on the crop of the province map (reduces the "
                              "number of provinces that need to be searched; probably doesnt even matter at all")
-
+    parser.add_argument("--ptp", type=str, default="most", choices=["most", "first", "last", "random"],
+                        help="pixel to province;"
+                             " When matching a pixel value to a province, which style should be chosen?")
+    parser.add_argument("--hre_only", action="store_true",
+                        help="only HRE provinces will be used as a screen; some parts of the video will never render")
+    parser.add_argument("--offset_date", type=int, nargs=2, default=config.offset_date_default, required=False,
+                        help="Number of Months to delay the start of the rendition and number of months to retain the "
+                             "end of the rendition. If given, 2 values are expected (begin, end). By default: 1 1")
     return parser.parse_args()
 
 
@@ -52,6 +59,9 @@ args = None
 def main():
     global args
     args = parse_args()
+
+    if not " ".join(args.output)[-4:] == ".eu4":
+        raise Exception("output_file should end with '.eu4'; instead it is {}".format(" ".join(args.output)))
 
     hm = torment.HistoryMaker()
     hm.fake_construct(
@@ -66,6 +76,9 @@ def main():
         crop=args.crop,
         resize=args.resize,
         redefine=args.redefine,
+        ptp=args.ptp,
+        hre_only=args.hre_only,
+        offset_date =args.offset_date,
     )
     hm.match()
     hm.make_history()

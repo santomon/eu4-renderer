@@ -18,6 +18,8 @@ export_csv_kwargs = {
     "index": False
 }
 
+offset_date_default = (1, 1)
+
 bw_values = (0, 255)
 bw_match = {"(0, 0, 0)": "BTA",
             "(255, 255, 255)": "HAB",
@@ -28,7 +30,9 @@ simple_colours = list(itertools.permutations(_simple_coloursteps, 3))
 
 brackets = {"{": "}", "[": "]", "(": ")"}
 
-history_insert = "\t{date}={{\n\t\t\t\towner={tag}\n\t\t\t}}\n\t\t"
+history_fragment = "\t{date}={{\n\t\t\t\towner={tag}\n\t\t\t}}\n\t\t"
+mapcolour_fragment = "map_color={{\n\t\t\t\t{r} {g} {b} \n\t\t\t}}"
+hre_according_to_gamestate = "\n\t\thre=yes\n"  # relies on correct indendation to find hre provinces
 
 definitions_path = r"C:\Grand Archives\shitty projects\eu4-renderer\resources\voltaires_nightmare_cropped_definitions.csv"
 test_province_map_path = r"C:\Grand Archives\shitty projects\eu4-renderer\resources\voltaires_nightmare_provinces_cropped.bmp"

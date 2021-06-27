@@ -38,6 +38,10 @@ class HistoryMaker:
         self.output = None
         self.tmp_dir = None
         self.f1_name = None
+        self.ptp = None
+        self.hre_only = None
+
+        self.offset_date = config.offset_date_default
 
     def fake_construct(self,
                        _input,
@@ -48,6 +52,9 @@ class HistoryMaker:
                        definition,
                        pbmp,
                        crop,
+                       ptp,
+                       hre_only,
+                       offset_date,
                        redefine=False,
                        resize=None,
                        f1=None,
@@ -82,9 +89,11 @@ class HistoryMaker:
         self.crop = crop
         self.size = (self.province_map.shape[1], self.province_map.shape[0])
 
+        self.ptp = ptp
         self.pairs = None
         self.frame_kwargs = None
         self.frame_args = None
+        self.hre_only = hre_only
 
         self.input = os.path.abspath(_input)
         self.output = os.path.abspath(output)
@@ -93,6 +102,8 @@ class HistoryMaker:
         if not os.path.isdir(self.tmp_dir):
             os.makedirs(self.tmp_dir)
         self.f1_name = f1
+
+        self.offset_date = offset_date
 
     def load_mp4(self):
         pass
@@ -114,7 +125,7 @@ class HistoryMaker:
 
         if self.histories is None:
             self._load_histories(os.path.join(self.tmp_dir, config.histories_name))
-        self._apply_histories(eu4, output)
+        self._apply_histories(eu4, output,  offset_date=self.offset_date, hre_only=self.hre_only,)
 
     def load_frames(self, _input, first_frame_name, *args, **kwargs):
 
@@ -150,7 +161,7 @@ class HistoryMaker:
         self.frame = np.asarray(im)
         return self.frame
 
-    def match_frame_to_map(self, frame: np.ndarray, matching=config.bw_match, av_cvalues=config.bw_values):
+    def match_frame_to_map(self, frame: np.ndarray, cmatching=config.bw_match, av_cvalues=config.bw_values, pmatching="most"):
         """
         whatever the case; should produce entries for self.histories
         should add a tag in the appropriate province entries;
@@ -162,7 +173,7 @@ class HistoryMaker:
 
         :param av_cvalues:
         :param frame:
-        :param matching: a dict that matches a colour to a tag
+        :param cmatching: a dict that matches a colour to a tag
         :return:
         """
         frame = np.asarray(Image.fromarray(frame).resize(self.size, Image.NEAREST))
@@ -172,14 +183,14 @@ class HistoryMaker:
 
         self.pairs = pd.DataFrame({"pcolour": [tuple(x) for x in province_map], "frame": [tuple(x) for x in frame]})
         self.pairs["pcolour"] = self.pairs["pcolour"].astype(str)
-        self.pairs = self.pairs.merge(self.definitions, how="inner", on="pcolour")[["province", "frame"]]
+        self.pairs = self.pairs.merge(self.definitions, how="inner", on="pcolour")[["province", "frame"]]  # slow i think
         self.pairs["province"] = self.pairs["province"].astype(int)
 
-        self.pairs = province_to_colour_matching.choose_most_occuring(self.pairs)
+        self.pairs = province_to_colour_matching.choices[pmatching](self.pairs)
         self.pairs = self.pairs.map(lambda x: util.interpolate_colour(x, av_cvalues))
 
         self.pairs = self.pairs.astype(str)
-        self.pairs = self.pairs.replace(matching)
+        self.pairs = self.pairs.replace(cmatching)
 
         if self.histories is None:
             self.histories = [self.pairs]
@@ -187,8 +198,9 @@ class HistoryMaker:
             self.histories.append(self.pairs)
 
     def _create_histories(self):
-        for full_frame_name in tqdm(self.frames):
-            self.match_frame_to_map(self.load_frame(full_frame_name, *self.frame_args, **self.frame_kwargs))
+        for full_frame_name in tqdm(self.frames, desc="Matching Pixel to Province"):
+            self.match_frame_to_map(self.load_frame(full_frame_name, *self.frame_args, **self.frame_kwargs),
+                                    pmatching=self.ptp)
         self.histories = pd.DataFrame(self.histories)
 
     def _export_histories(self, output_file):
@@ -197,7 +209,7 @@ class HistoryMaker:
     def _load_histories(self, histories_file):
         self.histories = pd.read_csv(histories_file, **config.load_csv_kwargs)
 
-    def _apply_histories(self, eusave: str, output_file: str, tmp_dir=config.tmp_dir):
+    def _apply_histories(self, eusave: str,output_file: str, offset_date, tmp_dir=config.tmp_dir, *args, **kwargs):
         """
         loads a save file, that is at the start of the game;
         appends province histories of self.histories to all provinces
@@ -210,11 +222,9 @@ class HistoryMaker:
         :param tmp_dir: where to unzip and edit files
         :return:
         """
-        if not output_file[-4:] == ".eu4":
-            raise Exception("output_file should end with '.eu4'")
 
         eu = zipfile.ZipFile(eusave)
-        eu_save_dir = os.path.join(tmp_dir, config.eu_extract)
+        eu_save_dir = os.path.abspath(os.path.join(tmp_dir, config.eu_extract))
         eu.extractall(eu_save_dir)
         eu.close()
 
@@ -227,17 +237,19 @@ class HistoryMaker:
 
         start_date = re.search(r"(?<=date=)\d+\.\d+\.\d+", metat).group()
         start_date = ".".join([*start_date.split(".")[:2], "28"])
+        for _ in range(offset_date[0]):
+            start_date = util.increment_date(start_date)
         end_date = start_date
-        for _ in range(self.histories.shape[0]):
+        for _ in range(self.histories.shape[0] + offset_date[1]):
             end_date = util.increment_date(end_date)
 
         provinces = [int(p) for p in self.histories.columns]
         self.histories.columns = [int(p) for p in self.histories.columns]
         provinces.sort(reverse=True)
 
-        for p in tqdm(provinces):
+        for p in tqdm(provinces, desc="writing history"):
             history = self._generate_single_history(self.histories[p], start_date)
-            gamestatet = self._insert_history(p, history, gamestatet)
+            gamestatet = self._insert_history(p, history, gamestatet, *args, **kwargs)
         metat = re.sub(r"(?<=date=)\d+\.\d+\.\d+", end_date, metat)
 
         self.metat = metat
@@ -257,7 +269,7 @@ class HistoryMaker:
 
         existing_provinces = set()
 
-        for x in tqdm(self.province_map):
+        for x in tqdm(self.province_map, desc="Finding Existing Provinces"):
             for colour in x:
                 t = self.definitions[(self.definitions["red"] == colour[0]) &
                                      (self.definitions["green"] == colour[1]) &
@@ -294,26 +306,41 @@ class HistoryMaker:
 
         date = start_date
         history = ""
+        prev_tag = None
         for tag in ownership_history:
-            history = history + config.history_insert.format(date=date, tag=tag)
+            if prev_tag == tag:
+                date = util.increment_date(date)
+                continue
+
+            history = history + config.history_fragment.format(date=date, tag=tag)
+            prev_tag = tag
             date = util.increment_date(date)
         return history
 
-    def _insert_history(self, p: int, history: str, gamestate: str) -> str:
+    def _insert_history(self, p: int, history: str, gamestate: str, hre_only=False) -> str:
         query = r"(?<=-{}=){{".format(p)
         start_pos = re.search(query, gamestate).span()[0]
         end_pos = start_pos + util.find_closing_bracket(gamestate[start_pos:])
 
-        new_string = gamestate[start_pos:end_pos]
-        query = r"(?<=history=){"
-        start_inner = re.search(query, new_string).span()[0]
-        end_inner = start_inner + util.find_closing_bracket(new_string[start_inner:])
-        new_string = new_string[:end_inner] + history + new_string[end_inner:]
+        province_info = gamestate[start_pos:end_pos]
 
-        return gamestate[:start_pos] + new_string + gamestate[end_pos:]
+        if hre_only:
+            if not config.hre_according_to_gamestate in province_info:
+                return gamestate
+        query = r"(?<=history=){"
+        start_inner = re.search(query, province_info).span()[0]
+        end_inner = start_inner + util.find_closing_bracket(province_info[start_inner:])
+        province_info = province_info[:end_inner] + history + province_info[end_inner:]
+
+        return gamestate[:start_pos] + province_info + gamestate[end_pos:]
 
 if __name__ == "__main__":
     pass
 
+    x = HistoryMaker()
+    x._load_histories(r"C:\Grand Archives\shitty projects\eu4-renderer\resources\tmp\histories.csv")
+    x.hre_only = True
+    x.make_history(r"C:\Grand Archives\shitty projects\eu4-renderer\resources\BadApple_Start_VoltairesNightmare.eu4",
+                   r"C:\Grand Archives\shitty projects\eu4-renderer\resources\bad_apple_hre.eu4")
 # voltaires nightmare: total unique colors: 7294
 # voltaires nightmare: definitions length: 7299

@@ -2,3 +2,4 @@
 resources/*
 *__pycache__*
 .py_cache/*
+.coverage

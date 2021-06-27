@@ -16,7 +16,7 @@ def _get_hre_members(province_history_path, output_file):
         if current_file in files:
             with open(os.path.join(province_history_path, current_file)) as f:
                 text = f.read()
-            if re.search(r"hre\s*=\s*yes", text):
+            if re.search(r"(?<=\n)hre\s*=\s*yes", text):
                 print("hre member: {}".format(current_file))
                 hre_provinces.add(int(current_file.split(".")[0]))
             next_file = _next_province_history(current_file)
