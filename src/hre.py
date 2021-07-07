@@ -3,8 +3,8 @@ import re
 
 import pandas as pd
 
-import config
-from util import increment
+from src import config
+from src.util import increment
 
 
 def _get_hre_members(province_history_path, output_file):

@@ -1,7 +1,6 @@
 import argparse
 
-import config
-import torment
+from src import config, torment
 
 
 def parse_args():

@@ -8,10 +8,7 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 
-import config
-from hre import _get_hre_members
-import util
-import matching as province_to_colour_matching
+from src import config, util, matching as province_to_colour_matching
 
 
 class HistoryMaker:
@@ -209,7 +206,7 @@ class HistoryMaker:
     def _load_histories(self, histories_file):
         self.histories = pd.read_csv(histories_file, **config.load_csv_kwargs)
 
-    def _apply_histories(self, eusave: str,output_file: str, offset_date, tmp_dir=config.tmp_dir, *args, **kwargs):
+    def _apply_histories(self, eusave: str, output_file: str, offset_date, tmp_dir=config.tmp_dir, *args, **kwargs):
         """
         loads a save file, that is at the start of the game;
         appends province histories of self.histories to all provinces

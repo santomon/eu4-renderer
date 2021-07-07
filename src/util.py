@@ -2,7 +2,7 @@ import os
 import re
 import typing as t
 
-import config
+from src import config
 
 
 def find_closing_bracket(text, bracket="{"):
