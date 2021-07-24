@@ -3,3 +3,8 @@ resources/*
 *__pycache__*
 .py_cache/*
 .coverage
+
+src/experimentation.py
+
+#Allow
+#!resources/empty.txt

@@ -325,7 +325,14 @@ class HistoryMaker:
             if not config.hre_according_to_gamestate in province_info:
                 return gamestate
         query = r"(?<=history=){"
-        start_inner = re.search(query, province_info).span()[0]
+
+        try:
+            start_inner = re.search(query, province_info).span()[0]
+        except AttributeError:  # history does not exist for this province yet
+            # print("History not found; currently at province:", p)
+            province_info = province_info[:-2] + config.complete_history_fragment + province_info[-2:]
+            start_inner = re.search(query, province_info).span()[0]
+
         end_inner = start_inner + util.find_closing_bracket(province_info[start_inner:])
         province_info = province_info[:end_inner] + history + province_info[end_inner:]
 
