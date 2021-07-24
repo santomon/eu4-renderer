@@ -25,6 +25,7 @@ class HistoryMaker2(torment.HistoryMaker):
     # override
     def load_frame(self, full_frame_name, resize=None):
         im: Image.Image = Image.open(full_frame_name)
+        im = im.convert("RGB")
         im = im.quantize(palette=self.palette, dither=0, colors=self.ncolours)
         im = im.convert("RGB")
         if resize is not None:
