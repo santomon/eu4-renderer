@@ -1,10 +1,12 @@
 import os
 import re
+import typing as t
 
 import pandas as pd
 
-import config
-from util import increment
+from src import config
+from src.util import increment
+import src.util as util
 
 
 def _get_hre_members(province_history_path, output_file):
@@ -38,3 +40,5 @@ def _next_province_history(ph):
         return re.sub(r"\d+$", increment, cfname) + ext
     else:
         return -1
+
+

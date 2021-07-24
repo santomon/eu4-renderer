@@ -8,10 +8,7 @@ import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 
-import config
-from hre import _get_hre_members
-import util
-import matching as province_to_colour_matching
+from src import config, util, matching as province_to_colour_matching
 
 
 class HistoryMaker:
@@ -43,6 +40,9 @@ class HistoryMaker:
 
         self.offset_date = config.offset_date_default
 
+        self.ncolours = None
+        self.colouring = None
+
     def fake_construct(self,
                        _input,
                        output,
@@ -55,6 +55,8 @@ class HistoryMaker:
                        ptp,
                        hre_only,
                        offset_date,
+                       colouring=config.default_colouring_mode,
+                       ncolours=config.ncolours,
                        redefine=False,
                        resize=None,
                        f1=None,
@@ -104,6 +106,9 @@ class HistoryMaker:
         self.f1_name = f1
 
         self.offset_date = offset_date
+
+        self.ncolours = ncolours
+        self.colouring = colouring
 
     def load_mp4(self):
         pass
@@ -209,7 +214,7 @@ class HistoryMaker:
     def _load_histories(self, histories_file):
         self.histories = pd.read_csv(histories_file, **config.load_csv_kwargs)
 
-    def _apply_histories(self, eusave: str,output_file: str, offset_date, tmp_dir=config.tmp_dir, *args, **kwargs):
+    def _apply_histories(self, eusave: str, output_file: str, offset_date, tmp_dir=config.tmp_dir, *args, **kwargs):
         """
         loads a save file, that is at the start of the game;
         appends province histories of self.histories to all provinces
@@ -328,7 +333,14 @@ class HistoryMaker:
             if not config.hre_according_to_gamestate in province_info:
                 return gamestate
         query = r"(?<=history=){"
-        start_inner = re.search(query, province_info).span()[0]
+
+        try:
+            start_inner = re.search(query, province_info).span()[0]
+        except AttributeError:  # history does not exist for this province yet
+            # print("History not found; currently at province:", p)
+            province_info = province_info[:-2] + config.complete_history_fragment + province_info[-2:]
+            start_inner = re.search(query, province_info).span()[0]
+
         end_inner = start_inner + util.find_closing_bracket(province_info[start_inner:])
         province_info = province_info[:end_inner] + history + province_info[end_inner:]
 

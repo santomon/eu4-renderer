@@ -1,9 +1,7 @@
 import os
 
-import torment
-import config
-import util
-import hre
+from src import config, torment, util
+
 
 class TestTorment:
 
@@ -39,7 +37,7 @@ class TestUtil:
         assert util._closest_neighbour(8, self.iterable) == 7
 
     def test_upper_neighbour(self):
-        assert util._upper_neighbour(15,  self.iterable) == 10
+        assert util._upper_neighbour(15, self.iterable) == 10
         assert util._upper_neighbour(6, self.iterable) == 7
         assert util._upper_neighbour(-1, self.iterable) == 1
 

@@ -1,10 +1,6 @@
-import pytest
-
 import pandas as pd
-import numpy as np
 
-import config
-import matching
+from src import matching
 
 
 class TestMatching:
