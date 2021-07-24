@@ -34,11 +34,23 @@ class HistoryMaker2(torment.HistoryMaker):
         self.frame = np.asarray(im)
         return self.frame
 
-    def make_palette(self, ncolours=config.ncolours):
-        self.ncolours = ncolours
-        palette_img = Image.fromarray(config.simple_colours)
-        self.palette = palette_img.quantize(palette=Image.WEB, dither=0, colors=ncolours)
+    def make_palette(self):
 
+        if self.colouring == "bw":
+            palette_img = Image.fromarray(config.bws)
+            self.palette = palette_img.quantize(palette=Image.WEB, dither=0, colors=2)
+        elif self.colouring == "grays":
+            palette_img = Image.fromarray(config.grays)
+            self.palette = palette_img.quantize(palette=Image.WEB, dither=0, colors=self.ncolours)
+        elif self.colouring == "simple":
+            palette_img = Image.fromarray(config.simple_colours)
+            self.palette = palette_img.quantize(palette=Image.WEB, dither=0, colors=self.ncolours)
+        elif self.colouring == "infer":
+            # currently only infers from the first frame;
+            palette_img = Image.open(self.frames[0]).convert("RGB")
+            self.palette = palette_img.quantize(palette=Image.WEB, dither=0, colors=self.ncolours)
+        else:
+            raise ValueError("colouring method not understood; has to be one of {}, but it is {}".format(config.colouring_choices, self.colouring))
 
     # override
     def _create_histories(self):

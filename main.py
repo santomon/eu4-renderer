@@ -49,14 +49,14 @@ def parse_args():
     parser.add_argument("--offset_date", type=int, nargs=2, default=config.offset_date_default, required=False,
                         help="Number of Months to delay the start of the rendition and number of months to retain the "
                              "end of the rendition. If given, 2 values are expected (begin, end). By default: {}".format(config.offset_date_default))
-    parser.add_argument("--colouring", type=str, nargs=1, default=config.default_colouring_mode,
-                        choices=["bw", "gray", "simple", "infer"],
+    parser.add_argument("--colouring", type=str, default=config.default_colouring_mode,
+                        choices=config.colouring_choices,
                         help="choose, which way to colour the provinces:\n"
                              "bw: black and white \n"
                              "gray: grayscale \n"
                              "simple: uses quantization to interpolate colours in an image to a small set of predefined colours \n"
                              "infer: infers quantized palette from the input material")
-    parser.add_argument("--ncolours", "-nc", type=int, nargs=1, default=config.ncolours, required=False,
+    parser.add_argument("--ncolours", "-nc", type=int, default=config.ncolours, required=False,
                         help="if a non-greyscale colour mode is selected, you can specify the  maximum number of unique"
                              " colours, used to quantize the image; \n"
                              "has to be: <=256; default: 256"
@@ -75,6 +75,12 @@ def main():
     if not " ".join(args.output)[-4:] == ".eu4":
         raise Exception("output_file should end with '.eu4'; instead it is {}".format(" ".join(args.output)))
 
+    """
+    if args.colouring in config.gray_scale_colourings:
+        hm = torment.HistoryMaker()
+    elif args.colouring in config.colour_colourings:
+        hm = torment2.HistoryMaker2()
+    """
     hm = torment2.HistoryMaker2()
     hm.fake_construct(
         _input=" ".join(args.input),
@@ -90,7 +96,10 @@ def main():
         redefine=args.redefine,
         ptp=args.ptp,
         hre_only=args.hre_only,
-        offset_date =args.offset_date,
+        offset_date=args.offset_date,
+
+        colouring=args.colouring,
+        ncolours=args.ncolours,
     )
     hm.match()
     hm.make_history()

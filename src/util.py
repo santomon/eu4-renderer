@@ -124,7 +124,7 @@ def get_n_tags(tags: t.List[str], n, desired_tags):
     return priority_tags + [tag for tag in tags if tag not in priority_tags][:n-len(priority_tags)]
 
 
-def combine_tags_colours(tags: t.List[str], colours: t.List) -> t.Dict[t.Tuple, str]:
+def combine_tags_colours(tags: t.List[str], colours: t.List) -> t.Dict[str, str]:
     assert len(tags) >= len(colours), "There need to be more tags than colours"
     result = {colour: tag for tag, colour in zip(tags, colours)}
     return result
@@ -167,6 +167,7 @@ def insert_mapcolours_into_gamestate(gamestate: str, start_date: str, colour_mat
         countries_txt = countries_txt[:history_end] + insert + countries_txt[history_end:]
 
     return gamestate[:start_pos] + countries_txt + gamestate[end_pos:]
+
 
 if __name__ == '__main__':
     c_matching = {(0, 0, 0): "SWE"}

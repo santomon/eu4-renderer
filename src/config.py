@@ -27,13 +27,25 @@ bw_match = {"(0, 0, 0)": "BTA",
             "(255, 255, 255)": "HAB",
             }
 
-default_colouring_mode = "bw"
+
+# colouring modes
+default_colouring_mode = "simple"
+gray_scale_colourings = ["bw", "gray"]
+colour_colourings = ["simple", "infer"]
+colouring_choices = gray_scale_colourings + colour_colourings
 
 #pixel colour interpolation
 _simple_coloursteps = range(0, 256, 10)
 simple_colours = np.array(list(itertools.product(_simple_coloursteps, repeat=3)))
 simple_colours: np.ndarray = simple_colours.reshape((simple_colours.shape[0], 1, 3)).astype(np.uint8)
+
+grays = np.array([(i, i, i) for i in range(256)]).astype(np.uint8)
+bws = np.array([(0, 0, 0), (255, 255, 255)]).astype(np.uint8)
+
+
 ncolours = 256
+
+
 
 brackets = {"{": "}", "[": "]", "(": ")"}
 

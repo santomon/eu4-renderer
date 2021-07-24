@@ -40,6 +40,9 @@ class HistoryMaker:
 
         self.offset_date = config.offset_date_default
 
+        self.ncolours = None
+        self.colouring = None
+
     def fake_construct(self,
                        _input,
                        output,
@@ -52,6 +55,8 @@ class HistoryMaker:
                        ptp,
                        hre_only,
                        offset_date,
+                       colouring=config.default_colouring_mode,
+                       ncolours=config.ncolours,
                        redefine=False,
                        resize=None,
                        f1=None,
@@ -101,6 +106,9 @@ class HistoryMaker:
         self.f1_name = f1
 
         self.offset_date = offset_date
+
+        self.ncolours = ncolours
+        self.colouring = colouring
 
     def load_mp4(self):
         pass
